@@ -543,6 +543,7 @@ def main():
 			pygame.mixer.music.play(-1)
 			score = 0
 			ship.level = 0
+			n = 200
 
 		pygame.display.flip()
 
