@@ -7,6 +7,7 @@ from pygame.locals import *
 if not pygame.font: print 'Warning, fonts disabled'
 if not pygame.mixer: print 'Warning, sound disabled'
 
+
 # Define colors
 BLACK = (0,0,0)
 WHITE = (255, 255, 255)
@@ -55,7 +56,7 @@ class Bullet(pygame.sprite.Sprite):
 		self.rect = self.image.get_rect()
 
 	def update(self):
-		self.rect.y -= 9
+		self.rect.y -= 18
 		# check to see if it is off screen
 		if self.rect.y <= 0:
 			return 1
@@ -68,7 +69,7 @@ class EnemyBullet(pygame.sprite.Sprite):
 		self.rect = self.image.get_rect()
 
 	def update(self):
-		self.rect.y += 9
+		self.rect.y += 18
 		# check to see if it is off screen
 		if self.rect.y >= 800:
 			return 1
@@ -120,16 +121,12 @@ class Enemy(pygame.sprite.Sprite):
 		self.image = pygame.transform.flip(self.image, 0, 1)
 		self.image = pygame.transform.scale(self.image, (64, 64))
 		self.rect = self.image.get_rect()
-		self.count = 0
+		self.xspeed = random.randint(-1, 1)
+		self.yspeed = random.randint(3, 11) 
 
 	def update(self):
-		if self.count == 5:
-			self.rect.y += random.randint(1, 5)
-			self.rect.x += random.randint(-1, 1)
-			self.count = 0
-		else:
-			self.rect.y += random.randint(1, 5)
-		self.count += 1
+		self.rect.y += self.yspeed
+		self.rect.x += self.xspeed
 		if self.rect.y > 800:
 			return 1
 		if self.rect.x > 1024 or self.rect.x < 0:
@@ -297,7 +294,7 @@ def main():
 	pygame.init()
 	pygame.mixer.init()
 	screen = pygame.display.set_mode((1024, 800),  pygame.DOUBLEBUF | pygame.HWSURFACE )
-
+	screen.set_alpha(None)
 	#Create The Background
 	background = pygame.image.load('data/space.jpg').convert()
 	background_size = background.get_size()
@@ -337,6 +334,7 @@ def main():
 	score = 0
 	font = pygame.font.Font(None, 36)
 
+	i = 0
 
 	# code for our menu 
 	mainMenu = ("Start Game",
@@ -405,67 +403,67 @@ def main():
 
 		if isGameActive:
 			pygame.mouse.set_visible(0)
-			for item in powerup_list:
-				if ship.rect.colliderect(item.rect):
-					powerup_list.remove(item)
-					if ship.level <= 3:
-						if n == 0 and ship.level != 3:
-							n = 200
-							ship.level += 1
-							sound = pygame.mixer.Sound('data/lvl.wav')
-							sound.set_volume(.1)
-							sound.play()
-							slowdown += 10
-						elif n == 0 and ship.level == 3:
-							n = 0
-							item.sound.play()
-						else:
-							n -= 20
-							item.sound.play()
-						pygame.key.set_repeat(50, n)
+			if i % 2:
+				for item in powerup_list:
+					if ship.rect.colliderect(item.rect):
+						powerup_list.remove(item)
+						if ship.level <= 3:
+							if n == 0 and ship.level != 3:
+								n = 200
+								ship.level += 1
+								sound = pygame.mixer.Sound('data/lvl.wav')
+								sound.set_volume(.1)
+								sound.play()
+								slowdown += 10
+							elif n == 0 and ship.level == 3:
+								n = 0
+								item.sound.play()
+							else:
+								n -= 20
+								item.sound.play()
+							pygame.key.set_repeat(50, n)
 						
 
 			if not endgame:
+				if i % 2 == 0:
+					for item in enemy_list:
+						if ship.rect.colliderect(item.rect):
+							newexp = Explosion(ship.rect.x, ship.rect.y)
+							newexp2 = Explosion(item.rect.x, item.rect.y)
+							newexp.sound.play()
+							explosion_list.add(newexp)
+							explosion_list.add(newexp2)
+							enemy_list.remove(item)
+							endgame = 1
+							pygame.mixer.music.load('data/slowdown.mp3')
+							pygame.mixer.music.play()
+			if i % 3:
 				for item in enemy_list:
-					if ship.rect.colliderect(item.rect):
-						newexp = Explosion(ship.rect.x, ship.rect.y)
-						newexp2 = Explosion(item.rect.x, item.rect.y)
-						newexp.sound.play()
-						explosion_list.add(newexp)
-						explosion_list.add(newexp2)
-						enemy_list.remove(item)
-						endgame = 1
-						pygame.mixer.music.load('data/slowdown.mp3')
-						pygame.mixer.music.play()
-
-			for item in enemy_list:
-				for bul in bullet_list:
-					if item.rect.colliderect(bul.rect):
-						if random.randint(0, 20) == random.randint(0, 20):
-							if ship.level != 3:
-								newpowerup = Powerup()
-								newpowerup.rect.x = item.rect.x
-								newpowerup.rect.y = item.rect.y
-								powerup_list.add(newpowerup)
-							elif ship.level == 3 and n != 0:
-								newpowerup = Powerup()
-								newpowerup.rect.x = item.rect.x
-								newpowerup.rect.y = item.rect.y
-								powerup_list.add(newpowerup)
-						newexp = Explosion(item.rect.x, item.rect.y)
-						explosion_list.add(newexp)
-						newexp.sound.play()
-						enemy_list.remove(item)
-						bullet_list.remove(bul)
-						score += 5
-						
-						
+					for bul in bullet_list:
+						if item.rect.colliderect(bul.rect):
+							if random.randint(0, 20) == random.randint(0, 20):
+								if ship.level != 3:
+									newpowerup = Powerup()
+									newpowerup.rect.x = item.rect.x
+									newpowerup.rect.y = item.rect.y
+									powerup_list.add(newpowerup)
+								elif ship.level == 3 and n != 0:
+									newpowerup = Powerup()
+									newpowerup.rect.x = item.rect.x
+									newpowerup.rect.y = item.rect.y
+									powerup_list.add(newpowerup)
+							newexp = Explosion(item.rect.x, item.rect.y)
+							explosion_list.add(newexp)
+							newexp.sound.play()
+							enemy_list.remove(item)
+							bullet_list.remove(bul)
+							score += 5
+										
 			if random.randint(0, (30 / (ship.level+1))) == random.randint(0, (30 / (ship.level+1))):
 				newenemy = Enemy()
 				newenemy.rect.x = random.randint(20, 900)
 				newenemy.rect.y = 0
-				enemy_list.add(newenemy)
-
+				enemy_list.add(newenemy)		
 			if random.randint(0, 1200) == random.randint(0, 1200):
 				if ship.level != 3:
 					newpowerup = Powerup()
@@ -482,17 +480,19 @@ def main():
 			y += 1
 
 			allsprites.update()
-
-			for item in bullet_list:
-				if item.update() == 1:
-					bullet_list.remove(item)
-			for item in powerup_list:
-				if item.update() == 1:
-					powerup_list.remove(item)
-			for item in enemy_list:
-				if item.update() == 1:
-					enemy_list.remove(item)
-					score -= 10
+			if i % 2:
+				for item in bullet_list:
+					if item.update() == 1:
+						bullet_list.remove(item)
+			if i % 2 == 0:
+				for item in powerup_list:
+					if item.update() == 1:
+						powerup_list.remove(item)
+			if i % 2:
+				for item in enemy_list:
+					if item.update() == 1:
+						enemy_list.remove(item)
+						score -= 10
 			for item in explosion_list:
 				if item.update() == 1:
 					explosion_list.remove(item)
@@ -503,6 +503,7 @@ def main():
 					isGameActive = True
 					reset = True
 					endgame = False
+					n = 200
 				else:
 					slowdown -= 1
 
@@ -546,6 +547,7 @@ def main():
 			n = 200
 
 		pygame.display.flip()
+		i += 1
 
 	#Game Over
 
