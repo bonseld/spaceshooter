@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 #Import Modules
-import os, pygame, random
+import os, pygame, random, sys
 from pygame.locals import *
 
 if not pygame.font: print 'Warning, fonts disabled'
@@ -46,7 +46,7 @@ class spritesheet(object):
 		for x in range(image_count)]
 		return self.images_at(tups, colorkey)
 
-        
+		
 class Bullet(pygame.sprite.Sprite):
 	def __init__(self):
 		pygame.sprite.Sprite.__init__(self) #call Sprite intializer
@@ -200,11 +200,103 @@ class Explosion(pygame.sprite.Sprite):
 		if self.anim == 4:
 			return 1
 
+class MenuItem (pygame.font.Font):
+	'''
+	The Menu Item should be derived from the pygame Font class
+	'''
+	def __init__(self,text, position,fontSize=36, antialias = 1, color = (255, 255, 255), background=None):
+		pygame.font.Font.__init__(self,None, fontSize)
+		self.text = text
+		if background == None:
+			self.textSurface = self.render(self.text,antialias,(255,255,255))
+		else:
+			self.textSurface = self.render(self.text,antialias,(255,255,255),background)
+		self.position=self.textSurface.get_rect(centerx=position[0],centery=position[1])
+	def get_pos(self):
+		return self.position
+	def get_text(self):
+		return self.text
+	def get_surface(self):
+		return self.textSurface                
+
+class Menu:
+	'''
+	The Menu should be initalized with a list of menu entries
+	it then creates a menu accordingly and manages the different
+	print Settings needed
+	'''
+
+	MENUCLICKEDEVENT = USEREVENT +1
+
+	def __init__(self,menuEntries, menuCenter = None):
+		'''
+		The constructer uses a list of string for the menu entries,
+		which need  to be created
+		and a menu center if non is defined, the center of the screen is used
+		'''
+		screen = pygame.display.get_surface()
+		self.area = screen.get_rect()
+		self.background = pygame.Surface(screen.get_size())
+		self.background = self.background.convert()
+		self.background.fill((0, 0, 0))
+		self.active=False
+
+		if pygame.font:
+			fontSize = 36
+			fontSpace= 4
+			# loads the standard font with a size of 36 pixels
+			# font = pygame.font.Font(None, fontSize)
+
+			# calculate the height and startpoint of the menu
+			# leave a space between each menu entry
+			menuHeight = (fontSize+fontSpace)*len(menuEntries)
+			startY = self.background.get_height()/2 - menuHeight/2  
+
+			#listOfTextPositions=list()
+			self.menuEntries = list()
+			for menuEntry in menuEntries:
+				centerX=self.background.get_width()/2
+				centerY = startY+fontSize+fontSpace
+				newEnty = MenuItem(menuEntry,(centerX,centerY))
+				self.menuEntries.append(newEnty)
+				self.background.blit(newEnty.get_surface(), newEnty.get_pos())
+				startY=startY+fontSize+fontSpace
+
+	def drawMenu(self):
+		self.active=True            
+		screen = pygame.display.get_surface()
+		screen.blit(self.background, (0, 0))
+
+	def isActive(self):
+		return self.active
+	def activate(self,):
+		self.active = True
+	def deactivate(self):
+		self.active = False
+	def handleEvent(self, event):
+		# only send the event if menu is active
+		if event.type == MOUSEBUTTONDOWN and self.isActive():
+			# initiate with menu Item 0
+			curItem = 0
+			# get x and y of the current event 
+			eventX = event.pos[0]
+			eventY = event.pos[1]
+			# for each text position 
+			for menuItem in self.menuEntries:
+				textPos = menuItem.get_pos()
+				# check if current event is in the text area 
+				if eventX > textPos.left and eventX < textPos.right \
+				and eventY > textPos.top and eventY < textPos.bottom:
+					# if so fire new event, which states which menu item was clicked                        
+					menuEvent = pygame.event.Event(self.MENUCLICKEDEVENT, item=curItem, text=menuItem.get_text())
+					pygame.event.post(menuEvent)
+				curItem = curItem + 1
+
 def main():
 	#Initialize Everything
 	pygame.init()
 	pygame.mixer.init()
-	screen = pygame.display.set_mode((1024, 800))
+	screen = pygame.display.set_mode((1024, 800),  pygame.DOUBLEBUF | pygame.HWSURFACE )
 
 	#Create The Background
 	background = pygame.image.load('data/space.jpg').convert()
@@ -221,10 +313,11 @@ def main():
 
 	#Init Stuff
 	pygame.display.set_caption('SpaceShooter!')
-	pygame.mouse.set_visible(0)
+	pygame.mouse.set_visible(1)
 	pygame.mixer.music.load('data/reso.mp3')
 	pygame.mixer.music.play(-1)
 	pygame.mixer.fadeout(2)
+
 	#Prepare Game Objects
 	clock = pygame.time.Clock()
 	ship = Ship()
@@ -234,6 +327,7 @@ def main():
 	enemy_list = pygame.sprite.Group()
 	explosion_list = pygame.sprite.Group()
 
+
 	allsprites.add(ship)
 	pygame.key.set_repeat(50, 200)
 	n = 200
@@ -242,6 +336,22 @@ def main():
 
 	score = 0
 	font = pygame.font.Font(None, 36)
+
+
+	# code for our menu 
+	mainMenu = ("Start Game",
+		"How to Play",
+		"Quit")
+	ingameMenu = ("Resume",
+		"Restart",
+		"Quit")
+	isGameActive = False
+	reset = False
+	howtoplay = False
+	myMenu = Menu(mainMenu)
+	inMenu = Menu(ingameMenu)
+	myMenu.drawMenu()
+	#  pygame.display.flip()
 	#Main Loop
 	while 1:
 		screen.blit(background, background_rect)
@@ -254,129 +364,187 @@ def main():
 
 		#Handle Input Events
 		for event in pygame.event.get():
+			myMenu.handleEvent(event)
+			inMenu.handleEvent(event)
 			if event.type == QUIT:
 				return
+
 			elif event.type == KEYDOWN and event.key == K_ESCAPE:
-				return
+				pygame.mouse.set_visible(1)
+				inMenu.activate()
+				isGameActive = False
+
+			elif event.type == Menu.MENUCLICKEDEVENT:
+				if event.text=="Quit":
+					return
+
+				elif event.item == 0:
+					isGameActive = True
+					reset = False
+					howtoplay = False
+					myMenu.deactivate()
+					inMenu.deactivate()
+
+				elif event.item == 1 and myMenu.active:
+					isGameActive = True
+					reset = True
+					howtoplay = True
+					inMenu.deactivate()
+					myMenu.deactivate()
+
+				elif event.item == 1:
+					isGameActive = True
+					reset = True
+					howtoplay = False
+					inMenu.deactivate()
+					myMenu.deactivate()
+
 			elif event.type == KEYDOWN and event.key == K_SPACE and endgame == 0:
 				newbullets = ship.shoot()
 				for item in newbullets:
 					bullet_list.add(item)
 
-		for item in powerup_list:
-			if ship.rect.colliderect(item.rect):
-				powerup_list.remove(item)
-				if ship.level <= 3:
-					if n == 0 and ship.level != 3:
-						n = 200
-						ship.level += 1
-						sound = pygame.mixer.Sound('data/lvl.wav')
-						sound.set_volume(.1)
-						sound.play()
-					elif n == 0 and ship.level == 3:
-						n = 0
-						item.sound.play()
-					else:
-						n -= 20
-						item.sound.play()
-					pygame.key.set_repeat(50, n)
-					
-
-		if not endgame:
-			for item in enemy_list:
+		if isGameActive:
+			pygame.mouse.set_visible(0)
+			for item in powerup_list:
 				if ship.rect.colliderect(item.rect):
-					newexp = Explosion(ship.rect.x, ship.rect.y)
-					newexp2 = Explosion(item.rect.x, item.rect.y)
-					newexp.sound.play()
-					explosion_list.add(newexp)
-					explosion_list.add(newexp2)
-					allsprites.remove(ship)
+					powerup_list.remove(item)
+					if ship.level <= 3:
+						if n == 0 and ship.level != 3:
+							n = 200
+							ship.level += 1
+							sound = pygame.mixer.Sound('data/lvl.wav')
+							sound.set_volume(.1)
+							sound.play()
+							slowdown += 10
+						elif n == 0 and ship.level == 3:
+							n = 0
+							item.sound.play()
+						else:
+							n -= 20
+							item.sound.play()
+						pygame.key.set_repeat(50, n)
+						
+
+			if not endgame:
+				for item in enemy_list:
+					if ship.rect.colliderect(item.rect):
+						newexp = Explosion(ship.rect.x, ship.rect.y)
+						newexp2 = Explosion(item.rect.x, item.rect.y)
+						newexp.sound.play()
+						explosion_list.add(newexp)
+						explosion_list.add(newexp2)
+						enemy_list.remove(item)
+						endgame = 1
+						pygame.mixer.music.load('data/slowdown.mp3')
+						pygame.mixer.music.play()
+
+			for item in enemy_list:
+				for bul in bullet_list:
+					if item.rect.colliderect(bul.rect):
+						if random.randint(0, 20) == random.randint(0, 20):
+							if ship.level != 3:
+								newpowerup = Powerup()
+								newpowerup.rect.x = item.rect.x
+								newpowerup.rect.y = item.rect.y
+								powerup_list.add(newpowerup)
+							elif ship.level == 3 and n != 0:
+								newpowerup = Powerup()
+								newpowerup.rect.x = item.rect.x
+								newpowerup.rect.y = item.rect.y
+								powerup_list.add(newpowerup)
+						newexp = Explosion(item.rect.x, item.rect.y)
+						explosion_list.add(newexp)
+						newexp.sound.play()
+						enemy_list.remove(item)
+						bullet_list.remove(bul)
+						score += 5
+						
+						
+			if random.randint(0, (30 / (ship.level+1))) == random.randint(0, (30 / (ship.level+1))):
+				newenemy = Enemy()
+				newenemy.rect.x = random.randint(20, 900)
+				newenemy.rect.y = 0
+				enemy_list.add(newenemy)
+
+			if random.randint(0, 1200) == random.randint(0, 1200):
+				if ship.level != 3:
+					newpowerup = Powerup()
+					newpowerup.rect.x = random.randint(20, 1024)
+					newpowerup.rect.y = random.randint(5, 150)
+					powerup_list.add(newpowerup)
+				elif ship.level == 3 and n != 0:
+					newpowerup = Powerup()
+					newpowerup.rect.x = random.randint(20, 1024)
+					newpowerup.rect.y = random.randint(5, 150)
+					powerup_list.add(newpowerup)
+
+			y1 += 1
+			y += 1
+
+			allsprites.update()
+
+			for item in bullet_list:
+				if item.update() == 1:
+					bullet_list.remove(item)
+			for item in powerup_list:
+				if item.update() == 1:
+					powerup_list.remove(item)
+			for item in enemy_list:
+				if item.update() == 1:
 					enemy_list.remove(item)
-					endgame = 1
-					pygame.mixer.music.load('data/slowdown.mp3')
-					pygame.mixer.music.play()
+					score -= 10
+			for item in explosion_list:
+				if item.update() == 1:
+					explosion_list.remove(item)
 
-		for item in enemy_list:
-			for bul in bullet_list:
-				if item.rect.colliderect(bul.rect):
-					if random.randint(0, 20) == random.randint(0, 20):
-						if ship.level != 3:
-							newpowerup = Powerup()
-							newpowerup.rect.x = item.rect.x
-							newpowerup.rect.y = item.rect.y
-							powerup_list.add(newpowerup)
-						elif ship.level == 3 and n != 0:
-							newpowerup = Powerup()
-							newpowerup.rect.x = item.rect.x
-							newpowerup.rect.y = item.rect.y
-							powerup_list.add(newpowerup)
-					newexp = Explosion(item.rect.x, item.rect.y)
-					explosion_list.add(newexp)
-					newexp.sound.play()
-					enemy_list.remove(item)
-					bullet_list.remove(bul)
-					score += 5
-					
-					
-		if random.randint(0, (30 / (ship.level+1))) == random.randint(0, (30 / (ship.level+1))):
-			newenemy = Enemy()
-			newenemy.rect.x = random.randint(20, 1000)
-			newenemy.rect.y = 0
-			enemy_list.add(newenemy)
+			if endgame:
+				if slowdown == 3:
+					slowdown = 80
+					isGameActive = True
+					reset = True
+					endgame = False
+				else:
+					slowdown -= 1
 
-		if random.randint(0, 1200) == random.randint(0, 1200):
-			if ship.level != 3:
-				newpowerup = Powerup()
-				newpowerup.rect.x = random.randint(20, 1024)
-				newpowerup.rect.y = random.randint(5, 150)
-				powerup_list.add(newpowerup)
-			elif ship.level == 3 and n != 0:
-				newpowerup = Powerup()
-				newpowerup.rect.x = random.randint(20, 1024)
-				newpowerup.rect.y = random.randint(5, 150)
-				powerup_list.add(newpowerup)
+			#Draw Everything
+			screen.blit(background, (x, y))
+			screen.blit(background, (x1, y1))
 
-		y1 += 1
-		y += 1
+			if howtoplay:
+				text = font.render("Use the mouse to move, and the spacebar to shoot!", 1, (WHITE))
+				screen.blit(text, (100, 50))
+			text = font.render("Score: " + str(score), 1, (WHITE))
+			screen.blit(text, (0, 0))
+			if y > h:
+				y = -h
+			if y1 > h:
+				y1 = -h
 
-		allsprites.update()
+			explosion_list.draw(screen)
+			enemy_list.draw(screen)
+			powerup_list.draw(screen)
+			bullet_list.draw(screen)
+			if not endgame:
+				allsprites.draw(screen)
 
-		for item in bullet_list:
-			if item.update() == 1:
-				bullet_list.remove(item)
-		for item in powerup_list:
-			if item.update() == 1:
-				powerup_list.remove(item)
-		for item in enemy_list:
-			if item.update() == 1:
-				enemy_list.remove(item)
-				score -= 10
-		for item in explosion_list:
-			if item.update() == 1:
-				explosion_list.remove(item)
+		if myMenu.isActive():
+			myMenu.drawMenu()
 
-		if endgame:
-			if slowdown <= 0:
-				return
-			else:
-				slowdown -= .9
+		if inMenu.isActive():
+			inMenu.drawMenu()
 
-		#Draw Everything
-		screen.blit(background, (x, y))
-		screen.blit(background, (x1, y1))
+		if reset:
+			explosion_list.empty()
+			enemy_list.empty()
+			powerup_list.empty()
+			bullet_list.empty()
+			reset = False
+			pygame.mixer.music.load('data/reso.mp3')
+			pygame.mixer.music.play(-1)
+			score = 0
+			ship.level = 0
 
-		text = font.render("Score: " + str(score), 1, (WHITE))
-		screen.blit(text, (0, 0))
-		if y > h:
-			y = -h
-		if y1 > h:
-			y1 = -h
-			
-		explosion_list.draw(screen)
-		enemy_list.draw(screen)
-		powerup_list.draw(screen)
-		bullet_list.draw(screen)
-		allsprites.draw(screen)
 		pygame.display.flip()
 
 	#Game Over
