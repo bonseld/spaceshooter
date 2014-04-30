@@ -1,0 +1,66 @@
+\documentclass{article}
+
+\usepackage{graphicx}
+
+\usepackage{fancyvrb}
+\usepackage{amsmath}
+
+
+\title{Space Shooter}
+\author{Dylan Bonsell}
+\date{Spring 2014}
+
+
+\begin{document}
+\maketitle
+CS321
+Matthews
+\newpage
+\section{Back Story}
+	Your are a ship on a mission, to destroy all other ships!
+
+\newpage
+\section{User's Guide}
+	To move, move the mouse! To shoot, press the space bar. To continue to shoot, hold the space bar.
+	Collect power up stars to upgrade your gun!
+	If ships get past you, you lose 10 points. If you kill them, you gain 5.
+\newpage
+\section{Module Documentation}
+	spritesheet is a basic sprite sheet loader, imports files, and gets images at locations. It also has the ability to load a strip.
+\\
+	There are classes for Bullet, EnemyBullet, Ship, Powerup, and Enemy.
+	Each of these have an update, which handles itself in moving.
+\\ 
+	There is a Menu and MenuItem Class, which was taken from a basic menu tutorial. They essentially give the ability to load a menu on the fly, and handle the objects easily.
+\newpage
+\section{Cheats}
+	There are no cheats, as there is no end game! The game simply gets harder the longer you play
+\newpage
+\section{Acknowledgement}
+\begin{verbatim}
+Menu:
+http://scripters-corner.net/2013/04/11/creating-a-menu-in-pygame/
+Slow down sound:
+http://www.freesound.org/people/RICHERlandTV/sounds/216093/
+SpriteSheet
+http://www.pygame.org/wiki/Spritesheet?parent=CookBook
+Music:
+https://www.youtube.com/watch?v=S0ofoYDPNMY
+Explosion:
+http://spritedatabase.net/files/snes/344/Sprite/Spaceship.png
+Star for Power Up:
+http://awcomics.wikia.com/wiki/Starter_Sprites
+Background:
+http://walls4joy.com/wallpaper/296556-outer-space-stars
+Random sounds are generated with this:
+http://www.bfxr.net/
+Enemy Ships:
+http://opengameart.org/sites/default/files/ships.png
+Main Ship:
+http://www.blitzbasic.com/Community/posts.php?topic=86289
+\end{verbatim}
+\newpage
+\section{Autobiographical}
+I have a lot of python experience, but visual rendering is new to me. The most fun was getting just simple sprites to work, and then actually move the way I wanted them too. The rules were simple, but using an OOP design is odd but useful.
+One of the issues I has was when setting $key.set_repeat$ it removes the key being held down. I have yet to find a way around other that to let up on the space bar and put it back down again.
+\end{document}

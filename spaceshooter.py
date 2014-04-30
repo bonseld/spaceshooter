@@ -387,7 +387,6 @@ def main():
 
 				elif event.item == 1 and myMenu.active:
 					isGameActive = True
-					reset = True
 					howtoplay = True
 					inMenu.deactivate()
 					myMenu.deactivate()
