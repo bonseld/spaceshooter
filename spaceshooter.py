@@ -16,6 +16,9 @@ RED = (255, 0, 0)
 
 # Initialize pygame engine
 pygame.init()
+global ssenemies
+global ssexplosion
+global ssship
 
 class spritesheet(object):
 	def __init__(self, filename):
@@ -49,9 +52,8 @@ class spritesheet(object):
 
 		
 class Bullet(pygame.sprite.Sprite):
-	def __init__(self):
+	def __init__(self, ss):
 		pygame.sprite.Sprite.__init__(self) #call Sprite intializer
-		ss = spritesheet('data/ship.png')
 		self.image = ss.image_at((0, 132, 12, 16), -1)
 		self.rect = self.image.get_rect()
 
@@ -61,30 +63,17 @@ class Bullet(pygame.sprite.Sprite):
 		if self.rect.y <= 0:
 			return 1
 
-class EnemyBullet(pygame.sprite.Sprite):
-	def __init__(self):
-		pygame.sprite.Sprite.__init__(self) #call Sprite intializer
-		ss = spritesheet('data/ship.png')
-		self.image = ss.image_at((0, 132, 12, 16), -1)
-		self.rect = self.image.get_rect()
-
-	def update(self):
-		self.rect.y += 18
-		# check to see if it is off screen
-		if self.rect.y >= 800:
-			return 1
-
 
 class Ship(pygame.sprite.Sprite):
 	"""moves a ship on the screen, following the mouse"""
-	def __init__(self):
+	def __init__(self, ss):
 		pygame.sprite.Sprite.__init__(self) #call Sprite initializer
-		ss = spritesheet('data/ship.png')
 		self.image = ss.image_at((42, 0, 42, 42), -1)
 		self.image = pygame.transform.scale(self.image, (52, 52))
 		self.rect = self.image.get_rect()
 		self.shooting = 0
 		self.level = 0
+		self.ss = ss
 
 	def update(self):
 		pos = pygame.mouse.get_pos()
@@ -92,7 +81,7 @@ class Ship(pygame.sprite.Sprite):
 
 	def shoot(self):
 		self.shooting = 1
-		newspawn = Bulletspawn(self.level, self)
+		newspawn = Bulletspawn(self.level, self, self.ss)
 		return newspawn
 
 class Powerup(pygame.sprite.Sprite):
@@ -113,9 +102,8 @@ class Powerup(pygame.sprite.Sprite):
 
 class Enemy(pygame.sprite.Sprite):
 	"""moves a ship on the screen from top to bottom """
-	def __init__(self):
+	def __init__(self, ss):
 		pygame.sprite.Sprite.__init__(self) #call Sprite initializer
-		ss = spritesheet('data/enemies.png')
 		randship = random.randint(0, 10)
 		self.image = ss.image_at((0, (randship * 256), 256, 256), -1)
 		self.image = pygame.transform.flip(self.image, 0, 1)
@@ -132,10 +120,10 @@ class Enemy(pygame.sprite.Sprite):
 		if self.rect.x > 1024 or self.rect.x < 0:
 			return 1
 
-def Bulletspawn(level, ship):
+def Bulletspawn(level, ship, ss):
 	newbullet = []
 	for i in range(0, level+1):
-		newbullet.append(Bullet())
+		newbullet.append(Bullet(ss))
 	if level == 0:
 		newbullet[0].rect.x = ship.rect.x + 10
 		newbullet[0].rect.y = ship.rect.y + 8
@@ -163,9 +151,8 @@ def Bulletspawn(level, ship):
 	return newbullet
 class Explosion(pygame.sprite.Sprite):
 	anim = 4
-	def __init__(self, x, y):
+	def __init__(self, x, y, ss):
 		pygame.sprite.Sprite.__init__(self) #call Sprite initializer
-		ss = spritesheet('data/explosion.png')
 		self.exp = []
 		self.exp.append(ss.image_at((0, 0, 20, 37), -1))
 		self.exp.append(ss.image_at((21, 0, 24, 36), -1))
@@ -299,6 +286,9 @@ def main():
 	background = pygame.image.load('data/space.jpg').convert()
 	background_size = background.get_size()
 	background_rect = background.get_rect()
+	ssenemies = spritesheet('data/enemies.png')
+	ssexplosion = spritesheet('data/explosion.png')
+	ssship = spritesheet('data/ship.png')
 	
 
 	#Background scrolling
@@ -317,7 +307,7 @@ def main():
 
 	#Prepare Game Objects
 	clock = pygame.time.Clock()
-	ship = Ship()
+	ship = Ship(ssship)
 	allsprites = pygame.sprite.Group()
 	bullet_list = pygame.sprite.Group()
 	powerup_list = pygame.sprite.Group()
@@ -428,8 +418,8 @@ def main():
 				if i % 2 == 0:
 					for item in enemy_list:
 						if ship.rect.colliderect(item.rect):
-							newexp = Explosion(ship.rect.x, ship.rect.y)
-							newexp2 = Explosion(item.rect.x, item.rect.y)
+							newexp = Explosion(ship.rect.x, ship.rect.y, ssexplosion)
+							newexp2 = Explosion(item.rect.x, item.rect.y, ssexplosion)
 							newexp.sound.play()
 							explosion_list.add(newexp)
 							explosion_list.add(newexp2)
@@ -452,43 +442,43 @@ def main():
 									newpowerup.rect.x = item.rect.x
 									newpowerup.rect.y = item.rect.y
 									powerup_list.add(newpowerup)
-							newexp = Explosion(item.rect.x, item.rect.y)
+							newexp = Explosion(item.rect.x, item.rect.y, ssexplosion)
 							explosion_list.add(newexp)
 							newexp.sound.play()
 							enemy_list.remove(item)
 							bullet_list.remove(bul)
 							score += 5
 										
-			if random.randint(0, (30 / (ship.level+1))) == random.randint(0, (30 / (ship.level+1))):
-				newenemy = Enemy()
-				newenemy.rect.x = random.randint(20, 900)
-				newenemy.rect.y = 0
-				enemy_list.add(newenemy)		
-			if random.randint(0, 1200) == random.randint(0, 1200):
-				if ship.level != 3:
-					newpowerup = Powerup()
-					newpowerup.rect.x = random.randint(20, 1024)
-					newpowerup.rect.y = random.randint(5, 150)
-					powerup_list.add(newpowerup)
-				elif ship.level == 3 and n != 0:
-					newpowerup = Powerup()
-					newpowerup.rect.x = random.randint(20, 1024)
-					newpowerup.rect.y = random.randint(5, 150)
-					powerup_list.add(newpowerup)
+				if random.randint(0, (30 / (ship.level+1))) == random.randint(0, (30 / (ship.level+1))):
+					newenemy = Enemy(ssenemies)
+					newenemy.rect.x = random.randint(20, 900)
+					newenemy.rect.y = 0
+					enemy_list.add(newenemy)		
+				if random.randint(0, 800) == random.randint(0, 800):
+					if ship.level != 3:
+						newpowerup = Powerup()
+						newpowerup.rect.x = random.randint(20, 1024)
+						newpowerup.rect.y = random.randint(5, 150)
+						powerup_list.add(newpowerup)
+					elif ship.level == 3 and n != 0:
+						newpowerup = Powerup()
+						newpowerup.rect.x = random.randint(20, 1024)
+						newpowerup.rect.y = random.randint(5, 150)
+						powerup_list.add(newpowerup)
 
 			y1 += 1
 			y += 1
 
 			allsprites.update()
-			if i % 2:
+			if i % 3:
 				for item in bullet_list:
 					if item.update() == 1:
 						bullet_list.remove(item)
-			if i % 2 == 0:
+			if i % 3 == 0:
 				for item in powerup_list:
 					if item.update() == 1:
 						powerup_list.remove(item)
-			if i % 2:
+			if i % 3:
 				for item in enemy_list:
 					if item.update() == 1:
 						enemy_list.remove(item)
